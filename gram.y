@@ -35,6 +35,7 @@
 
 %token <str>	IDENT FCONST SCONST
 %token <ival>	ICONST
+%token			ERROR
 
 %%
 

@@ -4,12 +4,11 @@
 
 int main(void)
 {
-	char buf[] = "test";
 	yy_extra_type yyextra;
-	yyscan_t scanner = scanner_init(buf, &yyextra);
+	yyscan_t scanner = scanner_init(stdin, &yyextra);
 	parser_init();
 	yyparse(scanner);
-	scanner_finish(scanner);
+	return scanner_finish(scanner);
 }
 
 void yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char *message)

@@ -23,12 +23,10 @@ static FILE *include_file(yyscan_t *yyscanner);
 %option noyyget_text
 %option noyyget_lineno
 %option noyyset_lineno
-%option noyyset_in
 %option noyyget_out
 %option noyyset_out
 %option noyyget_lval
 %option noyyset_lval
-%option noyyget_lloc
 %option noyyset_lloc
 %option noyyget_debug
 %option noyyset_debug
@@ -124,7 +122,9 @@ other			.
 
 <xt>{xtstop}	{
 		if (yyextra->include) {
-			YY_FATAL_ERROR("include requires a filename\n");
+			yyextra->error = true;
+			yyerror(yylloc, yyscanner, "include requires a filename\n");
+			yyterminate();
 		} else {
 			yyfree(yyextra->literal, yyscanner);
 			yyextra->literal = strdup("");
@@ -150,6 +150,9 @@ other			.
 		BEGIN(xt);
 		if (yyextra->include) {
 			yyin = include_file(yyscanner);
+			if (yyin == NULL) {
+				yyterminate();
+			}
 			yyfree(yyextra->literal, yyscanner);
 			yyextra->literal = strdup("");
 		} else {
@@ -188,7 +191,11 @@ other			.
 	return yytext[0];
 }
 
-<xt><<EOF>> { YY_FATAL_ERROR("unterminated tag block: expected %}\n"); }
+<xt><<EOF>> {
+		yyextra->error = true;
+		yyerror(yylloc, yyscanner, "unterminated tag block: expected %}\n");
+		yyterminate();
+	}
 
 <xq,xd>{other}	{
 		/* \\ before EOF */
@@ -197,7 +204,11 @@ other			.
 		yyextra->literal = strndup(yytext, yyleng + 1);
 	}
 
-<xq,xd><<EOF>> { YY_FATAL_ERROR("unterminated quoted string\n"); }
+<xq,xd><<EOF>> {
+		yyextra->error = true;
+		yyerror(yylloc, yyscanner, "unterminated quoted string\n");
+		yyterminate();
+	}
 
 <INITIAL><<EOF>>	{
 		size_t const len = strlen(yyextra->literal);
@@ -208,6 +219,7 @@ other			.
 		yyextra->literal = strdup("");
 		if (yyextra->include_stack_ptr == 0) {
 			if (len == 0) {
+				yyextra->error = false;
 				yyterminate();
 			}
 		} else {
@@ -233,14 +245,17 @@ include_file(yyscan_t *yyscanner)
 			yypop_buffer_state(yyscanner);
 		}
 		yylex_destroy(yyscanner);
-		YY_FATAL_ERROR("max include depth exceeded\n");
+		yyext->error = true;
+		yyerror(yyget_lloc(yyscanner), yyscanner, "max include depth exceeded\n");
+		return NULL;
 	}
 
 	FILE * const fin = fopen(yyext->literal, "r");
 
 	if (fin == NULL) {
-		perror("fopen");
-		YY_FATAL_ERROR("could not include file\n");
+		yyext->error = true;
+		yyerror(yyget_lloc(yyscanner), yyscanner, "could not include file\n");
+		return NULL;
 	}
 
 	yypush_buffer_state(yy_create_buffer(fin, YY_BUF_SIZE, yyscanner),
@@ -253,13 +268,12 @@ include_file(yyscan_t *yyscanner)
  * Called before any actual parsing is done
  */
 yyscan_t
-scanner_init(char *str, yy_extra_type *yyext)
+scanner_init(FILE *file, yy_extra_type *yyext)
 {
-	size_t		slen = strlen(str);
 	yyscan_t	scanner;
 
 	if (yylex_init(&scanner) != 0) {
-		exit(-1);
+		return NULL;
 	}
 
 	yyset_extra(yyext, scanner);
@@ -267,9 +281,9 @@ scanner_init(char *str, yy_extra_type *yyext)
 	yyext->include = false;
 	yyext->include_stack_ptr = 0;
 	yyext->literal = strdup("");
+	yyext->error = true;
 
-	str[slen] = YY_END_OF_BUFFER_CHAR;
-	yy_scan_buffer(str, slen, scanner);
+	yyset_in(file, scanner);
 
 	return scanner;
 }
@@ -278,10 +292,11 @@ scanner_init(char *str, yy_extra_type *yyext)
 /*
  * Called after parsing is done to clean up after scanner_init()
  */
-void
+int
 scanner_finish(yyscan_t *yyscanner)
 {
 	yy_extra_type *yyext = yyget_extra(yyscanner);
 	yyfree(yyext->literal, yyscanner);
 	yylex_destroy(yyscanner);
+	return(yyext->error);
 }

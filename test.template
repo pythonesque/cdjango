@@ -1,4 +1,4 @@
-{% "\"THE WILL SMITH STORY\"" '
+{{% "\"THE WILL SMITH STORY\"" '
 By \'DJ Jazzy Jeff\'' %}
 
 {% time

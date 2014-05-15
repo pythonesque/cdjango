@@ -40,6 +40,7 @@ scan.c: scan.l
 # template: $(objects)("test"
 # 	$(CC) $(LDFLAGS) -o $@ $(objects) $(LDLIBS)
 
+libtemplate.a: CFLAGS += -fPIC
 libtemplate.a: $(objects)
 	ar rcs $@ $(objects) $(LDLIBS)
 
