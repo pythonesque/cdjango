@@ -30,74 +30,41 @@
 
 
 %type <template>	template
-%type <list>		segment_list
-%type <node>		segment cdata_segment /*var_segment*/ tag_segment stmt
+%type <list>		stmt_list
+%type <node>		stmt
 
 %token <str>	IDENT FCONST SCONST
 %token <ival>	ICONST
-%token			VSTART VEND TSTART TEND
 
 %%
 
 template:
-			segment_list
+			stmt_list
 				{
 					
 				}
 
-segment_list:
-			segment_list segment
+stmt_list:
+			stmt_list stmt
 				{
-					if ($2 != NULL) {
-						$$ = $2;
-					} else {
-						$$ = $1;
-					}
+					$1;
+					$$ = $2;
 				}
-			| segment
+			| /* empty */
 				{
-					if ($1 != NULL) {
-						$$ = $1;
-					} else {
-						$$ = NULL;
-					}
+					$$ = NULL;
 				}
-		;
 
-segment:
-			cdata_segment
-				{
-					$$ = $1;
-				}/*
-			| var_segment
-				{
-					$$ = $1;
-				}*/
-			| tag_segment
-				{
-					$$ = $1;
-				}
-		;
-
-cdata_segment:
+stmt:
 			SCONST
 				{
 					$$ = (Node *) $1;
 				}
-		;
-
-/*var_segment:
-			VSTART VEND*/
-
-tag_segment:
-			TSTART stmt TEND
+			| ICONST
 				{
-					$$ = (Node *) $2;
+					$$ = (Node *) $1;
 				}
-		;
-
-stmt:
-			SCONST
+			| IDENT
 				{
 					$$ = (Node *) $1;
 				}

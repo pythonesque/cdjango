@@ -22,7 +22,7 @@ LDLIBS =
 all: libtemplate.a test
 
 test: LDLIBS += -ltemplate
-test: $(testsources:.c=.o)
+test: $(testsources:.c=.o) libtemplate.a
 	$(CC) $(LDFLAGS) -L. -o $@ $(testsources:.c=.o) $(LDLIBS)
 
 objects = $(sources:.c=.o) gram.o
@@ -36,7 +36,6 @@ gram.c: YFLAGS += --defines=gram.h
 gram.o: gram.h
 
 scan.c: scan.l
-
 
 # template: $(objects)("test"
 # 	$(CC) $(LDFLAGS) -o $@ $(objects) $(LDLIBS)
@@ -54,4 +53,4 @@ libtemplate.a: $(objects)
 
 .PHONY: clean
 clean:
-	-rm -f txtbrowse gram.c gram.h scan.c *.o *.d
+	-rm -f test libtemplate.a gram.c gram.h scan.c *.o *.d

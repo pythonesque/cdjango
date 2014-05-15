@@ -33,15 +33,12 @@
 %option warn
 
 %x xt
-%x xv
+%x xq
 
 cdata		[^{]*
 
 xtstart \{\%
 xtstop \%\}
-
-xvstart \{\{
-xvstop \}\}
 
 space			[ \t\n\r\f]
 newline			[\n\r]
@@ -52,7 +49,7 @@ comment			("#"{non_newline}*)
 whitespace		({space}+|{comment})
 
 /*
- * dquote			'
+ * dquote			"
  * dquotestop		{dquote}{whitespace}*
  * dquotecontinue	{dquote}{whitespace_with_newline}{dquote}
  *
@@ -65,15 +62,17 @@ whitespace		({space}+|{comment})
  * xxdunicodefail	[\\](u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})
  */
 
+quote			'
+quotestop		{quote}
+
 xqstart			{quote}
-xqstop			{quote}
 xqinside		[^']+
 
 digit			[0-9]
 ident_start		[A-Za-z\200-\377_]
 ident_cont		[A-Za-z\200-\377_0-9\$]
 
-identifier		{ident_start}{ident_cont}
+identifier		{ident_start}{ident_cont}*
 
 integer			{digit}+
 /*
@@ -88,9 +87,23 @@ other			.
 
 %%
 
-{cdata}		{	printf("%s\n", yytext); return SCONST; }
+{cdata}		{	printf("%s", yytext); return SCONST; }
 
-{xtstart}	{	printf("foo\n"); return TSTART; }
+{xtstart}	{	BEGIN(xt); }
+
+<xt>{whitespace}	{	/* ignore */ }
+
+<xt>{xtstop}	{	BEGIN(INITIAL); }
+
+<xt>{xqstart}	{	BEGIN(xq); }
+
+<xt>{identifier}	{	printf("(IDENT: %s)", yytext); return IDENT; }
+
+<xt>{integer}	{	printf("(ICONST: %s)", yytext); return ICONST; }
+
+<xq>{quotestop}	{	BEGIN(xt); }
+
+<xq>{xqinside}	{	printf("%s", yytext); return SCONST; }
 
 %%
 
