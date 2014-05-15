@@ -1,6 +1,9 @@
+{% "\"THE WILL SMITH STORY\"" '
+By \'DJ Jazzy Jeff\'' %}
+
 {% time
 %} this is {% 1 %} story {%
 'all ' prep ' how' %}
 My life got flip-turned upside down.
-{% include 'rest.template' %}
-To sit on my throne as the Prince of Bel Air.
+{% include "rest.template"
+%}To sit on my throne as the Prince of Bel Air.

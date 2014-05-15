@@ -3,6 +3,8 @@
 
 #define YY_EXTRA_TYPE yy_extra_type *
 
+static FILE *include_file(yyscan_t *yyscanner, yy_extra_type *yyext);
+
 %}
 
 %option reentrant
@@ -14,11 +16,10 @@
 %option nodefault
 %option noinput
 %option nounput
-/* %option noyy_scan_buffer */
+%option noyy_top_state
 %option noyy_scan_bytes
 %option noyy_scan_string
 %option noyyget_extra
-/*%option noyyset_extra*/
 %option noyyget_leng
 %option noyyget_text
 %option noyyget_lineno
@@ -38,6 +39,7 @@
 
 %x xt
 %x xq
+%x xd
 
 cdata		[^{]*
 
@@ -58,7 +60,6 @@ whitespace		({space}+|{comment})
  * dquotecontinue	{dquote}{whitespace_with_newline}{dquote}
  *
  * xdstart			{dquote}
- * xdinside		[^\\']+
  * xdescape		[\\][^0-7]
  * xxdoctesc		[\\][0-7]{1,3}
  * xxdhexesc		[\\]x[0-9A-Fa-f]{1,2}
@@ -69,8 +70,15 @@ whitespace		({space}+|{comment})
 quote			'
 quotestop		{quote}
 
+dquote			"\""
+
 xqstart			{quote}
-xqinside		[^']+
+xqinside		[^\\']+
+xqescape		\\.
+
+xdstart			{dquote}
+xdstop			{dquote}
+xdinside		[^\\"]+
 
 digit			[0-9]
 ident_start		[A-Za-z\200-\377_]
@@ -91,7 +99,19 @@ other			.
 
 %%
 
-{cdata}		{	printf("%s", yytext); return SCONST; }
+{cdata}		{
+		yyextra->literal = yytext;
+		if (yyextra->include) {
+			*yytext = '\0';
+			yyin = include_file(yyscanner, yyextra);
+			if (yyin == NULL) {
+				yyterminate();
+			}
+		} else {
+			printf("%s", yyextra->literal);
+			return SCONST;
+		}
+	}
 
 {xtstart}	{	BEGIN(xt); }
 
@@ -101,37 +121,69 @@ other			.
 
 <xt>{xqstart}	{	yyextra->literal = ""; BEGIN(xq); }
 
+<xt>{xdstart}	{	yyextra->literal = ""; BEGIN(xd); }
+
+<xq>{quotestop} {
+		BEGIN(xt);
+		*yytext = '\0';
+		if (yyextra->include) {
+			yyin = include_file(yyscanner, yyextra);
+			if (yyin == NULL) {
+				yyterminate();
+			}
+		} else {
+			printf("%s", yyextra->literal);
+			return SCONST;
+		}
+	}
+
+<xd>{xdstop} {
+		BEGIN(xt);
+		*yytext = '\0';
+		if (yyextra->include) {
+			yyin = include_file(yyscanner, yyextra);
+			if (yyin == NULL) {
+				yyterminate();
+			}
+		} else {
+			printf("%s", yyextra->literal);
+			return SCONST;
+		}
+	}
+
+<xq>{xqinside}	{
+		if (!yyextra->include) {
+			printf("%s", yyextra->literal);
+		}
+		yyextra->literal = yytext;
+	}
+
+<xd>{xdinside}	{
+		if (!yyextra->include) {
+			printf("%s", yyextra->literal);
+		}
+		yyextra->literal = yytext;
+	}
+
+<xq,xd>{xqescape}	{
+		if (!yyextra->include) {
+			*yytext = '\0';
+			printf("%s", yyextra->literal);
+		}
+		yyextra->literal = yytext;
+		yytext[0] = yytext[1];
+		yytext[1] = '\0';
+		return SCONST;
+	}
+
 <xt>include		{	yyextra->include = 1; }
 
 <xt>{identifier}	{	yyextra->include = 0; printf("(IDENT: %s)", yytext); return IDENT; }
 
-<xt>{integer}	{	printf("(ICONST: %s)", yytext); return ICONST; }
-
-<xq>{quotestop} {
-		BEGIN(xt);
-		if (yyextra->include) {
-			yyextra->include = 0;
-			if (yyextra->include_stack_ptr++ == MAX_INCLUDE_DEPTH)
-			{
-				yyterminate();
-			}
-
-			*yytext = '\0';
-			yyin = fopen(yyextra->literal, "r");
-
-			if (yyin == NULL) {
-				yyterminate();
-			}
-
-			yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE, yyscanner),
-				yyscanner);
-			yy_push_state(INITIAL, yyscanner);
-		}
-	}
-
-<xq>{xqinside}	{	if (!yyextra->include) { printf("%s", yytext); } yyextra->literal = yytext; return SCONST; }
+<xt>{integer}	{	printf("(ICONS: %s)", yytext); return ICONST; }
 
 <INITIAL><<EOF>>	{
+
 		if (yyextra->include_stack_ptr-- == 0) {
 			yyterminate();
 		} else {
@@ -142,11 +194,30 @@ other			.
 
 %%
 
+static FILE *
+include_file(yyscan_t *yyscanner, yy_extra_type *yyext)
+{
+	yyext->include = 0;
+	if (yyext->include_stack_ptr++ == MAX_INCLUDE_DEPTH)
+	{
+		return NULL;
+	}
+
+	FILE * const fin = fopen(yyext->literal, "r");
+
+	if (fin == NULL) {
+		return NULL;
+	}
+
+	yypush_buffer_state(yy_create_buffer(fin, YY_BUF_SIZE, yyscanner),
+		yyscanner);
+	yy_push_state(INITIAL, yyscanner);
+	return fin;
+}
+
 /*
  * Called before any actual parsing is done
  */
-
-
 yyscan_t
 scanner_init(char *str, yy_extra_type *yyext)
 {
