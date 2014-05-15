@@ -5,16 +5,8 @@
 
 #define MAX_INCLUDE_DEPTH 10
 
-/*typedef union
-{
-	int		ival;
-	char	*str;
-} YYSTYPE;*/
-
-//#define YY_EXTRA_TYPE yy_extra_type *
 typedef struct yy_extra_type
 {
-	/*YY_BUFFER_STATE include_stack[MAX_INCLUDE_DEPTH];*/
 	int include_stack_ptr;
 	char *literal;
 	bool include;

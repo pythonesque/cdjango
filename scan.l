@@ -23,7 +23,6 @@ static FILE *include_file(yyscan_t *yyscanner);
 %option noyyget_text
 %option noyyget_lineno
 %option noyyset_lineno
-%option noyyget_in
 %option noyyset_in
 %option noyyget_out
 %option noyyset_out
@@ -227,8 +226,13 @@ include_file(yyscan_t *yyscanner)
 {
 	yy_extra_type *yyext = yyget_extra(yyscanner);
 	yyext->include = 0;
-	if (yyext->include_stack_ptr++ == MAX_INCLUDE_DEPTH)
-	{
+	if (yyext->include_stack_ptr++ == MAX_INCLUDE_DEPTH) {
+		yyfree(yyext->literal, yyscanner);
+		while (--yyext->include_stack_ptr) {
+			fclose(yyget_in(yyscanner));
+			yypop_buffer_state(yyscanner);
+		}
+		yylex_destroy(yyscanner);
 		YY_FATAL_ERROR("max include depth exceeded\n");
 	}
 
