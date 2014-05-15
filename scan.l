@@ -101,23 +101,21 @@ other			.
 
 {cdata}		{
 		yyextra->literal = yytext;
-		if (yyextra->include) {
-			*yytext = '\0';
-			yyin = include_file(yyscanner, yyextra);
-			if (yyin == NULL) {
-				yyterminate();
-			}
-		} else {
-			printf("%s", yyextra->literal);
-			return SCONST;
-		}
+		printf("%s", yyextra->literal);
+		return SCONST;
 	}
 
 {xtstart}	{	BEGIN(xt); }
 
 <xt>{whitespace}	{	/* ignore */ }
 
-<xt>{xtstop}	{	BEGIN(INITIAL); }
+<xt>{xtstop}	{
+		if (yyextra->include) {
+			YY_FATAL_ERROR("include requires a filename\n");
+		} else {
+			BEGIN(INITIAL);
+		}
+	}
 
 <xt>{xqstart}	{	yyextra->literal = ""; BEGIN(xq); }
 
@@ -128,9 +126,6 @@ other			.
 		*yytext = '\0';
 		if (yyextra->include) {
 			yyin = include_file(yyscanner, yyextra);
-			if (yyin == NULL) {
-				yyterminate();
-			}
 		} else {
 			printf("%s", yyextra->literal);
 			return SCONST;
@@ -142,9 +137,6 @@ other			.
 		*yytext = '\0';
 		if (yyextra->include) {
 			yyin = include_file(yyscanner, yyextra);
-			if (yyin == NULL) {
-				yyterminate();
-			}
 		} else {
 			printf("%s", yyextra->literal);
 			return SCONST;
@@ -182,8 +174,13 @@ other			.
 
 <xt>{integer}	{	printf("(ICONS: %s)", yytext); return ICONST; }
 
-<INITIAL><<EOF>>	{
+<xt><<EOF>> { YY_FATAL_ERROR("unterminated tag block: expected %}\n"); }
 
+<xd><<EOF>> { YY_FATAL_ERROR("unterminated string literal: expected \"\n"); }
+
+<xq><<EOF>> { YY_FATAL_ERROR("unterminated string literal: expected \'\n"); }
+
+<INITIAL><<EOF>>	{
 		if (yyextra->include_stack_ptr-- == 0) {
 			yyterminate();
 		} else {
@@ -200,13 +197,14 @@ include_file(yyscan_t *yyscanner, yy_extra_type *yyext)
 	yyext->include = 0;
 	if (yyext->include_stack_ptr++ == MAX_INCLUDE_DEPTH)
 	{
-		return NULL;
+		YY_FATAL_ERROR("max include depth exceeded\n");
 	}
 
 	FILE * const fin = fopen(yyext->literal, "r");
 
 	if (fin == NULL) {
-		return NULL;
+		perror("fopen");
+		YY_FATAL_ERROR("could not include file\n");
 	}
 
 	yypush_buffer_state(yy_create_buffer(fin, YY_BUF_SIZE, yyscanner),

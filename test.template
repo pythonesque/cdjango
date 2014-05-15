@@ -5,5 +5,5 @@ By \'DJ Jazzy Jeff\'' %}
 %} this is {% 1 %} story {%
 'all ' prep ' how' %}
 My life got flip-turned upside down.
-{% include "rest.template"
+{% include "rest.template" %}{%
 %}To sit on my throne as the Prince of Bel Air.
