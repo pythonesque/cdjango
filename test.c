@@ -5,7 +5,8 @@
 int main(void)
 {
 	char buf[] = "test";
-	yyscan_t scanner = scanner_init(buf);
+	yy_extra_type yyextra;
+	yyscan_t scanner = scanner_init(buf, &yyextra);
 	parser_init();
 	yyparse(scanner);
 	scanner_finish(scanner);

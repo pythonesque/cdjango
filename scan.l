@@ -1,4 +1,7 @@
 %{
+#include "scanner.h"
+
+#define YY_EXTRA_TYPE yy_extra_type *
 
 %}
 
@@ -7,6 +10,7 @@
 %option bison-locations
 %option 8bit
 %option never-interactive
+%option stack
 %option nodefault
 %option noinput
 %option nounput
@@ -95,23 +99,53 @@ other			.
 
 <xt>{xtstop}	{	BEGIN(INITIAL); }
 
-<xt>{xqstart}	{	BEGIN(xq); }
+<xt>{xqstart}	{	yyextra->literal = ""; BEGIN(xq); }
 
-<xt>{identifier}	{	printf("(IDENT: %s)", yytext); return IDENT; }
+<xt>include		{	yyextra->include = 1; }
+
+<xt>{identifier}	{	yyextra->include = 0; printf("(IDENT: %s)", yytext); return IDENT; }
 
 <xt>{integer}	{	printf("(ICONST: %s)", yytext); return ICONST; }
 
-<xq>{quotestop}	{	BEGIN(xt); }
+<xq>{quotestop} {
+		BEGIN(xt);
+		if (yyextra->include) {
+			yyextra->include = 0;
+			++yyextra->include_stack_ptr;
 
-<xq>{xqinside}	{	printf("%s", yytext); return SCONST; }
+			*yytext = '\0';
+			yyin = fopen(yyextra->literal, "r");
+
+			if (yyin == NULL) {
+				yyterminate();
+			}
+
+			yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE, yyscanner),
+				yyscanner);
+			yy_push_state(INITIAL, yyscanner);
+		}
+	}
+
+<xq>{xqinside}	{	if (!yyextra->include) { printf("%s", yytext); } yyextra->literal = yytext; return SCONST; }
+
+<INITIAL><<EOF>>	{
+		if (yyextra->include_stack_ptr-- == 0) {
+			yyterminate();
+		} else {
+			yypop_buffer_state(yyscanner);
+			yy_pop_state(yyscanner);
+		}
+	}
 
 %%
 
 /*
  * Called before any actual parsing is done
  */
+
+
 yyscan_t
-scanner_init(char *str)
+scanner_init(char *str, yy_extra_type *yyext)
 {
 	size_t		slen = strlen(str);
 	yyscan_t	scanner;
@@ -119,6 +153,11 @@ scanner_init(char *str)
 	if (yylex_init(&scanner) != 0) {
 		exit(-1);
 	}
+
+	yyset_extra(yyext, scanner);
+
+	yyext->include = false;
+	yyext->include_stack_ptr = 0;
 
 	str[slen] = YY_END_OF_BUFFER_CHAR;
 	yy_scan_buffer(str, slen, scanner);
