@@ -16,14 +16,14 @@ typedef struct yy_extra_type
 {
 	/*YY_BUFFER_STATE include_stack[MAX_INCLUDE_DEPTH];*/
 	int include_stack_ptr;
-	char const *literal;
+	char *literal;
 	bool include;
 } yy_extra_type;
 
 typedef void *yyscan_t;
 
 extern yyscan_t scanner_init(char *str, yy_extra_type *yyext);
-extern void scanner_finish(yyscan_t scanner);
+extern void scanner_finish(yyscan_t *scanner);
 //extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t yyscanner);
 
 #endif /* !SCANNER_H */

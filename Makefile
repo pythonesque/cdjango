@@ -11,7 +11,7 @@ testsources = test.c
 
 CC = gcc -O -std=c11
 YACC = yacc
-DEFS =
+DEFS = -D_POSIX_C_SOURCE=200809L -D_POSIX_SOURCE=1
 CDEBUG = -g
 WFLAGS = -Wall -pedantic-errors -Wextra
 CFLAGS = $(CDEBUG) -I. -I$(srcdir) $(DEFS) $(WFLAGS)

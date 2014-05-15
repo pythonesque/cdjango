@@ -3,7 +3,7 @@
 
 #define YY_EXTRA_TYPE yy_extra_type *
 
-static FILE *include_file(yyscan_t *yyscanner, yy_extra_type *yyext);
+static FILE *include_file(yyscan_t *yyscanner);
 
 %}
 
@@ -19,7 +19,6 @@ static FILE *include_file(yyscan_t *yyscanner, yy_extra_type *yyext);
 %option noyy_top_state
 %option noyy_scan_bytes
 %option noyy_scan_string
-%option noyyget_extra
 %option noyyget_leng
 %option noyyget_text
 %option noyyget_lineno
@@ -41,10 +40,11 @@ static FILE *include_file(yyscan_t *yyscanner, yy_extra_type *yyext);
 %x xq
 %x xd
 
-cdata		[^{]*
+cdata			[^{]*
 
-xtstart \{\%
-xtstop \%\}
+xtstart			\{\%
+xtstop			\%\}
+xtfail			\{[^%]
 
 space			[ \t\n\r\f]
 newline			[\n\r]
@@ -74,7 +74,7 @@ dquote			"\""
 
 xqstart			{quote}
 xqinside		[^\\']+
-xqescape		\\.
+xqescape		\\([^\n]|\n)
 
 xdstart			{dquote}
 xdstop			{dquote}
@@ -99,73 +99,83 @@ other			.
 
 %%
 
-{cdata}		{
-		yyextra->literal = yytext;
+<INITIAL>\{ |
+<INITIAL>{cdata}		{
 		printf("%s", yyextra->literal);
-		return SCONST;
+		yyfree(yyextra->literal, yyscanner);
+		yyextra->literal = strndup(yytext, yyleng + 1);
 	}
 
-{xtstart}	{	BEGIN(xt); }
+<INITIAL>{xtstart}	{
+	printf("%s", yyextra->literal);
+	BEGIN(xt);
+	return SCONST;
+}
 
-<xt>{whitespace}	{	/* ignore */ }
+<INITIAL>{xtfail}	{
+		yyless(1);
+		printf("%s", yyextra->literal);
+		yyfree(yyextra->literal, yyscanner);
+		yyextra->literal = strndup(yytext, yyleng + 1);
+	}
+
+<xt>{whitespace}	{
+		/* ignore */
+	}
 
 <xt>{xtstop}	{
 		if (yyextra->include) {
 			YY_FATAL_ERROR("include requires a filename\n");
 		} else {
+			yyfree(yyextra->literal, yyscanner);
+			yyextra->literal = strdup("");
 			BEGIN(INITIAL);
 		}
 	}
 
-<xt>{xqstart}	{	yyextra->literal = ""; BEGIN(xq); }
+<xt>{xqstart}	{
+		yyfree(yyextra->literal, yyscanner);
+		yyextra->literal = strdup("");
+		BEGIN(xq);
+	}
 
-<xt>{xdstart}	{	yyextra->literal = ""; BEGIN(xd); }
 
-<xq>{quotestop} {
+<xt>{xdstart}	{
+		yyfree(yyextra->literal, yyscanner);
+		yyextra->literal = strdup("");
+		BEGIN(xd);
+	}
+
+<xq>{quotestop} |
+<xd>{xdstop}	{
 		BEGIN(xt);
-		*yytext = '\0';
 		if (yyextra->include) {
-			yyin = include_file(yyscanner, yyextra);
+			yyin = include_file(yyscanner);
+			yyfree(yyextra->literal, yyscanner);
+			yyextra->literal = strdup("");
 		} else {
 			printf("%s", yyextra->literal);
 			return SCONST;
 		}
 	}
 
-<xd>{xdstop} {
-		BEGIN(xt);
-		*yytext = '\0';
-		if (yyextra->include) {
-			yyin = include_file(yyscanner, yyextra);
-		} else {
-			printf("%s", yyextra->literal);
-			return SCONST;
-		}
-	}
-
-<xq>{xqinside}	{
-		if (!yyextra->include) {
-			printf("%s", yyextra->literal);
-		}
-		yyextra->literal = yytext;
-	}
-
+<xq>{xqinside}	|
 <xd>{xdinside}	{
 		if (!yyextra->include) {
 			printf("%s", yyextra->literal);
 		}
-		yyextra->literal = yytext;
+		yyfree(yyextra->literal, yyscanner);
+		yyextra->literal = strndup(yytext, yyleng + 1);
 	}
 
 <xq,xd>{xqescape}	{
 		if (!yyextra->include) {
-			*yytext = '\0';
 			printf("%s", yyextra->literal);
 		}
-		yyextra->literal = yytext;
 		yytext[0] = yytext[1];
 		yytext[1] = '\0';
-		return SCONST;
+		yyfree(yyextra->literal, yyscanner);
+		yyextra->literal = strndup(yytext, yyleng + 1);
 	}
 
 <xt>include		{	yyextra->include = 1; }
@@ -174,26 +184,47 @@ other			.
 
 <xt>{integer}	{	printf("(ICONS: %s)", yytext); return ICONST; }
 
+<xt>{other} {
+	printf("(TOKEN: %c)", yytext[0]);
+	return yytext[0];
+}
+
 <xt><<EOF>> { YY_FATAL_ERROR("unterminated tag block: expected %}\n"); }
 
-<xd><<EOF>> { YY_FATAL_ERROR("unterminated string literal: expected \"\n"); }
+<xq,xd>{other}	{
+		/* \\ before EOF */
+		printf("%s", yyextra->literal);
+		yyfree(yyextra->literal, yyscanner);
+		yyextra->literal = strndup(yytext, yyleng + 1);
+	}
 
-<xq><<EOF>> { YY_FATAL_ERROR("unterminated string literal: expected \'\n"); }
+<xq,xd><<EOF>> { YY_FATAL_ERROR("unterminated quoted string\n"); }
 
 <INITIAL><<EOF>>	{
-		if (yyextra->include_stack_ptr-- == 0) {
-			yyterminate();
+		size_t const len = strlen(yyextra->literal);
+		if (len > 0) {
+			printf("%s", yyextra->literal);
+		}
+		yyfree(yyextra->literal, yyscanner);
+		yyextra->literal = strdup("");
+		if (yyextra->include_stack_ptr == 0) {
+			if (len == 0) {
+				yyterminate();
+			}
 		} else {
+			--yyextra->include_stack_ptr;
 			yypop_buffer_state(yyscanner);
 			yy_pop_state(yyscanner);
 		}
+		return SCONST;
 	}
 
 %%
 
 static FILE *
-include_file(yyscan_t *yyscanner, yy_extra_type *yyext)
+include_file(yyscan_t *yyscanner)
 {
+	yy_extra_type *yyext = yyget_extra(yyscanner);
 	yyext->include = 0;
 	if (yyext->include_stack_ptr++ == MAX_INCLUDE_DEPTH)
 	{
@@ -230,6 +261,7 @@ scanner_init(char *str, yy_extra_type *yyext)
 
 	yyext->include = false;
 	yyext->include_stack_ptr = 0;
+	yyext->literal = strdup("");
 
 	str[slen] = YY_END_OF_BUFFER_CHAR;
 	yy_scan_buffer(str, slen, scanner);
@@ -242,7 +274,9 @@ scanner_init(char *str, yy_extra_type *yyext)
  * Called after parsing is done to clean up after scanner_init()
  */
 void
-scanner_finish(yyscan_t yyscanner)
+scanner_finish(yyscan_t *yyscanner)
 {
+	yy_extra_type *yyext = yyget_extra(yyscanner);
+	yyfree(yyext->literal, yyscanner);
 	yylex_destroy(yyscanner);
 }
