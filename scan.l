@@ -212,6 +212,7 @@ other			.
 				yyterminate();
 			}
 		} else {
+			fclose(yyin);
 			--yyextra->include_stack_ptr;
 			yypop_buffer_state(yyscanner);
 			yy_pop_state(yyscanner);
