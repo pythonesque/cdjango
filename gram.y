@@ -31,7 +31,7 @@
 
 %type <template>	template
 %type <list>		segment_list
-%type <node>		segment cdata_segment /*var_segment tag_segment*/
+%type <node>		segment cdata_segment /*var_segment*/ tag_segment stmt
 
 %token <str>	IDENT FCONST SCONST
 %token <ival>	ICONST
@@ -72,11 +72,11 @@ segment:
 			| var_segment
 				{
 					$$ = $1;
-				}
+				}*/
 			| tag_segment
 				{
 					$$ = $1;
-				}*/
+				}
 		;
 
 cdata_segment:
@@ -88,6 +88,20 @@ cdata_segment:
 
 /*var_segment:
 			VSTART VEND*/
+
+tag_segment:
+			TSTART stmt TEND
+				{
+					$$ = (Node *) $2;
+				}
+		;
+
+stmt:
+			SCONST
+				{
+					$$ = (Node *) $1;
+				}
+		;
 
 %%
 

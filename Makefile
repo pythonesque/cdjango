@@ -4,6 +4,8 @@ srcdir = .
 
 sources = template.c
 
+testsources = test.c
+
 .SUFFIXES:
 .SUFFIXES: .c .o .l .y
 
@@ -17,7 +19,11 @@ LDFLAGS = $(CDEBUG)
 LDLIBS =
 
 .PHONY: all
-all: template.a
+all: libtemplate.a test
+
+test: LDLIBS += -ltemplate
+test: $(testsources:.c=.o)
+	$(CC) $(LDFLAGS) -L. -o $@ $(testsources:.c=.o) $(LDLIBS)
 
 objects = $(sources:.c=.o) gram.o
 
@@ -29,11 +35,13 @@ gram.c: YFLAGS += --defines=gram.h
 
 gram.o: gram.h
 
+scan.c: scan.l
 
-# template: $(objects)
+
+# template: $(objects)("test"
 # 	$(CC) $(LDFLAGS) -o $@ $(objects) $(LDLIBS)
 
-template.a: $(objects)
+libtemplate.a: $(objects)
 	ar rcs $@ $(objects) $(LDLIBS)
 
 %.d: %.c
