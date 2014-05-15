@@ -111,7 +111,10 @@ other			.
 		BEGIN(xt);
 		if (yyextra->include) {
 			yyextra->include = 0;
-			++yyextra->include_stack_ptr;
+			if (yyextra->include_stack_ptr++ == MAX_INCLUDE_DEPTH)
+			{
+				yyterminate();
+			}
 
 			*yytext = '\0';
 			yyin = fopen(yyextra->literal, "r");

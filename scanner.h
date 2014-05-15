@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-//#define MAX_INCLUDE_DEPTH 10
+#define MAX_INCLUDE_DEPTH 10
 
 /*typedef union
 {
