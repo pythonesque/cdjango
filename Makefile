@@ -57,7 +57,7 @@ cdjango: libtemplate.a
 	$(PYTHON) setup.py build
 
 .PHONY: install
-install: cdjango
+install:
 	$(PYTHON) setup.py install --user
 
 .PHONY: clean

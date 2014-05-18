@@ -36,6 +36,7 @@
 %type <node>		expr tag
 					autoescape
 					block
+					comment
 
 %type <boolean>		toggle
 %type <str>			any_ident
@@ -94,6 +95,7 @@ expr:
 tag:
 			autoescape
 			| block
+			| comment
 		;
 
 autoescape: AUTOESCAPE_P toggle expr_list END_AUTOESCAPE_P
@@ -105,6 +107,12 @@ autoescape: AUTOESCAPE_P toggle expr_list END_AUTOESCAPE_P
 block:		BLOCK_P any_ident expr_list END_BLOCK_P
 				{
 					$$ = (Node *) $3;
+				}
+		;
+
+comment:	COMMENT_P expr_list END_COMMENT_P
+				{
+					$$ = NULL;
 				}
 		;
 

@@ -1,5 +1,6 @@
 {% block and block or block endblock %}And I'd like to take a minute{% endblock endblock
 endblock %}
+{% comment %}Fourscore and seven years ago{% endcomment %}
 Just sit right there
 I'll tell you how I became the prince of a town called Bel Air
 
