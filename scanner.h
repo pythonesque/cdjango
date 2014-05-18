@@ -29,5 +29,7 @@ extern yyscan_t scanner_init(FILE *filename, yy_extra_type *yyext,
 extern int scanner_finish(yyscan_t *scanner);
 extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t yyscanner);
 extern void yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char const *message);
+extern int scanner_include(char *filename, yyscan_t *yyscanner);
+
 
 #endif /* !SCANNER_H */

@@ -8,7 +8,7 @@
 
 %}
 
-%pure-parser
+%define api.pure full
 %expect 0
 %locations
 
@@ -34,9 +34,8 @@
 %type <list>		expr_list list
 
 
-%type <node>		expr tag
+%type <node>		expr tag include
 					autoescape
-
 					block
 					comment
 					csrf_token
@@ -48,6 +47,7 @@
 
 %token <str>	IDENT SCONST
 %token <ival>	ICONST
+%token			TSTART TEND
 
 %token <keyword> AND_P AS_P AUTOESCAPE_P BLOCK_P BY_P COMMENT_P CSRF_TOKEN_P
 		CYCLE_P DEBUG_P ELIF_P ELSE_P EMPTY_P END_AUTOESCAPE_P END_BLOCK_P
@@ -86,18 +86,19 @@ expr:
 				{
 					$$ = NULL;
 				}
+			| IDENT
+				{
+					$$ = (Node *) $1;
+				}
 			| list
 				{
 					$$ = (Node *) $1;
 				}
+			| include
 			| tag
 			| '(' expr ')'
 				{
 					$$ = $2;
-				}
-			| IDENT
-				{
-					$$ = (Node *) $1;
 				}
 		;
 
@@ -105,6 +106,13 @@ list:
 			'[' expr_list ']'
 				{
 					$$ = $2;
+				}
+		;
+
+include:
+			TSTART	expr_list	TEND
+				{
+					$$ = (Node *) $2;
 				}
 		;
 

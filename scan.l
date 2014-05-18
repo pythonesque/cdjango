@@ -7,8 +7,6 @@
 
 #define YY_EXTRA_TYPE yy_extra_type *
 
-static FILE *include_file(yyscan_t *yyscanner);
-
 %}
 
 %option reentrant
@@ -44,6 +42,7 @@ static FILE *include_file(yyscan_t *yyscanner);
 %x xt
 %x xq
 %x xd
+%x xi
 
 cdata			[^{]*
 
@@ -76,6 +75,8 @@ quote			'
 quotestop		{quote}
 
 dquote			"\""
+
+non_quotestop	[^'"]
 
 xqstart			{quote}
 xqinside		[^\\']+
@@ -114,7 +115,7 @@ other			.
 <INITIAL>{xtstart}	{
 	printf("%s", yyextra->literal);
 	BEGIN(xt);
-	return SCONST;
+	return(SCONST);
 }
 
 <INITIAL>{xtfail}	{
@@ -155,19 +156,31 @@ other			.
 
 <xq>{quotestop} |
 <xd>{xdstop}	{
-		BEGIN(xt);
 		if (yyextra->include) {
-			yyin = include_file(yyscanner);
-			if (yyin == NULL) {
+			BEGIN(xi);
+			yyless(0);
+			if (scanner_include(yyextra->literal, yyscanner) < 0) {
 				yyterminate();
+			} else {
+				return(TSTART);
 			}
-			yyfree(yyextra->literal, yyscanner);
-			yyextra->literal = strdup("");
 		} else {
+			BEGIN(xt);
 			printf("%s", yyextra->literal);
-			return SCONST;
+			return(SCONST);
 		}
 	}
+
+<xi>{quotestop}|{xdstop}	{
+		BEGIN(xt);
+		return(TEND);
+	}
+<xi>{non_quotestop} |
+<xi><<EOF>> {
+		yyextra->error = true;
+		YY_FATAL_ERROR("should never get here");
+	}
+
 
 <xq>{xqinside}	|
 <xd>{xdinside}	{
@@ -203,18 +216,18 @@ other			.
 	{
 		yylval->keyword = keyword->name;
 		printf("(KEYWORD: %s)", keyword->name);
-		return keyword->value;
+		return(keyword->value);
 	}
 
 	printf("(IDENT: %s)", yytext);
-	return IDENT;
+	return(IDENT);
 }
 
-<xt>{integer}	{	printf("(ICONS: %s)", yytext); return ICONST; }
+<xt>{integer}	{	printf("(ICONS: %s)", yytext); return(ICONST); }
 
 <xt>{other} {
 	printf("(TOKEN: %c)", yytext[0]);
-	return yytext[0];
+	return(yytext[0]);
 }
 
 <xt><<EOF>> {
@@ -254,7 +267,7 @@ other			.
 			yypop_buffer_state(yyscanner);
 			yy_pop_state(yyscanner);
 		}
-		return SCONST;
+		return(SCONST);
 	}
 
 %%
@@ -264,8 +277,8 @@ other			.
  */
 #define UNUSED(x) (void)(x)
 
-static FILE *
-include_file(yyscan_t *yyscanner)
+int
+scanner_include(char *filename, yyscan_t *yyscanner)
 {
 	yy_extra_type *yyext = yyget_extra(yyscanner);
 	yyext->include = 0;
@@ -278,21 +291,26 @@ include_file(yyscan_t *yyscanner)
 		yylex_destroy(yyscanner);
 		yyext->error = true;
 		yyerror(yyget_lloc(yyscanner), yyscanner, "max include depth exceeded\n");
-		return NULL;
+		return(-1);
 	}
 
-	FILE * const fin = fopen(yyext->literal, "r");
+	FILE * const fin = fopen(filename, "r");
 
 	if (fin == NULL) {
 		yyext->error = true;
 		yyerror(yyget_lloc(yyscanner), yyscanner, "could not include file\n");
-		return NULL;
+		return(-1);
 	}
 
 	yypush_buffer_state(yy_create_buffer(fin, YY_BUF_SIZE, yyscanner),
 		yyscanner);
 	yy_push_state(INITIAL, yyscanner);
-	return fin;
+	yyset_in(fin, yyscanner);
+
+	yyfree(yyext->literal, yyscanner);
+	yyext->literal = strdup("");
+
+	return(0);
 }
 
 /*
@@ -307,7 +325,7 @@ scanner_init(FILE *file,
 	yyscan_t	scanner;
 
 	if (yylex_init(&scanner) != 0) {
-		return NULL;
+		return(NULL);
 	}
 
 	yyset_extra(yyext, scanner);
@@ -322,7 +340,7 @@ scanner_init(FILE *file,
 
 	yyset_in(file, scanner);
 
-	return scanner;
+	return(scanner);
 }
 
 
