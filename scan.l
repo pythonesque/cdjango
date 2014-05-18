@@ -283,12 +283,6 @@ scanner_include(char *filename, yyscan_t *yyscanner)
 	yy_extra_type *yyext = yyget_extra(yyscanner);
 	yyext->include = 0;
 	if (yyext->include_stack_ptr++ == MAX_INCLUDE_DEPTH) {
-		yyfree(yyext->literal, yyscanner);
-		while (--yyext->include_stack_ptr) {
-			fclose(yyget_in(yyscanner));
-			yypop_buffer_state(yyscanner);
-		}
-		yylex_destroy(yyscanner);
 		yyext->error = true;
 		yyerror(yyget_lloc(yyscanner), yyscanner, "max include depth exceeded\n");
 		return(-1);
@@ -352,6 +346,10 @@ scanner_finish(yyscan_t *yyscanner)
 {
 	yy_extra_type *yyext = yyget_extra(yyscanner);
 	yyfree(yyext->literal, yyscanner);
+	while (yyext->include_stack_ptr--) {
+		fclose(yyget_in(yyscanner));
+		yypop_buffer_state(yyscanner);
+	}
 	yylex_destroy(yyscanner);
 	return(yyext->error);
 }
