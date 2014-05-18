@@ -20,11 +20,14 @@ typedef struct yy_extra_type
 } yy_extra_type;
 
 typedef void *yyscan_t;
+typedef union YYSTYPE YYSTYPE;
+typedef struct YYLTYPE YYLTYPE;
 
 extern yyscan_t scanner_init(FILE *filename, yy_extra_type *yyext,
 							 ScanKeyword const *keywords,
 							 uint16_t num_keywords);
 extern int scanner_finish(yyscan_t *scanner);
-//extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t yyscanner);
+extern int yylex(YYSTYPE *lvalp, YYLTYPE *llocp, yyscan_t yyscanner);
+extern void yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char const *message);
 
 #endif /* !SCANNER_H */

@@ -1,6 +1,10 @@
 %{
 #include "scanner.h"
 
+/* Avoid exit() on fatal scanner errors (a bit ugly -- see yy_fatal_error) */
+#undef fprintf
+#define fprintf(file, fmt, msg) yyerror(yyget_lloc(yyscanner), yyscanner, msg)
+
 #define YY_EXTRA_TYPE yy_extra_type *
 
 static FILE *include_file(yyscan_t *yyscanner);
@@ -31,6 +35,10 @@ static FILE *include_file(yyscan_t *yyscanner);
 %option noyyget_debug
 %option noyyset_debug
 %option noyywrap
+	/* %option noyyfatal_error */
+%option noyyalloc
+%option noyyrealloc
+%option noyyfree
 %option warn
 
 %x xt
@@ -251,6 +259,11 @@ other			.
 
 %%
 
+/*
+ *http://stackoverflow.com/questions/3599160/unused-parameter-warnings-in-c-code
+ */
+#define UNUSED(x) (void)(x)
+
 static FILE *
 include_file(yyscan_t *yyscanner)
 {
@@ -323,4 +336,34 @@ scanner_finish(yyscan_t *yyscanner)
 	yyfree(yyext->literal, yyscanner);
 	yylex_destroy(yyscanner);
 	return(yyext->error);
+}
+
+/* Redefinitions of some functions to eliminate warnings in generated code */
+
+void *
+yyalloc(yy_size_t  size , yyscan_t yyscanner)
+{
+	UNUSED(yyscanner);
+	return (void *) malloc( size );
+}
+
+void *
+yyrealloc(void * ptr, yy_size_t  size , yyscan_t yyscanner)
+{
+	/* The cast to (char *) in the following accommodates both
+	 * implementations that use char* generic pointers, and those
+	 * that use void* generic pointers.  It works with the latter
+	 * because both ANSI C and C++ allow castless assignment from
+	 * any pointer type to void*, and deal with argument conversions
+	 * as though doing an assignment.
+	 */
+	UNUSED(yyscanner);
+	return (void *) realloc( (char *) ptr, size );
+}
+
+void
+yyfree (void * ptr , yyscan_t yyscanner)
+{
+	UNUSED(yyscanner);
+	free( (char *) ptr );	/* see yyrealloc() for (char *) cast */
 }

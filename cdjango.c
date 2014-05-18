@@ -2,7 +2,8 @@
 
 #include "gramparse.h"
 
-void yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char *message);
+void
+yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char const *message);
 
 static PyObject *compile_template(PyObject *self, PyObject *args);
 
@@ -27,7 +28,8 @@ PyInit_cdjango(void)
 }
 
 
-void yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char *message)
+void
+yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char const *message)
 {
 }
 
@@ -38,7 +40,8 @@ compile_template(PyObject *self, PyObject *args)
 	yyscan_t scanner;
 	FILE *file;
 	yy_extra_type yyextra;
-	int res;
+	int scanner_res;
+	int parser_res;
 
 	if (!PyArg_ParseTuple(args, "s", &filename)) {
 		return NULL;
@@ -49,12 +52,11 @@ compile_template(PyObject *self, PyObject *args)
 		/* error */
 		return NULL;
 	}
-
 	scanner = scanner_init(file, &yyextra, ScanKeywords, NumScanKeywords);
 	parser_init();
-	yyparse(scanner);
-	res = scanner_finish(scanner);
+	parser_res = yyparse(scanner);
+	scanner_res = scanner_finish(scanner);
 	fclose(file);
 
-	return PyLong_FromLong(res);
+	return PyLong_FromLong(scanner_res == 0 ? parser_res : scanner_res);
 }

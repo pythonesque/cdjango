@@ -2,7 +2,8 @@
 
 #include <stdio.h>
 
-int main(void)
+int
+main(void)
 {
 	yy_extra_type yyextra;
 	yyscan_t scanner = scanner_init(stdin, &yyextra, ScanKeywords,
@@ -12,7 +13,8 @@ int main(void)
 	return scanner_finish(scanner);
 }
 
-void yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char *message)
+void
+yyerror(YYLTYPE *llocp, yyscan_t yyscanner, char const *message)
 {
 	fprintf(stderr, "%p %s\n", (void *) llocp, message);
 }
