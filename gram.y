@@ -32,14 +32,18 @@
 
 %type <template>	template
 %type <list>		expr_list list
+					basic_expr_list basic_list
 
 
-%type <node>		expr tag include
+%type <node>		expr basic_expr
+					tag include
 					autoescape
 					block
 					comment
 					csrf_token
 					cycle
+					debug
+					extends
 
 %type <boolean>		toggle opt_silent
 %type <str>			any_ident
@@ -61,11 +65,28 @@
 %%
 
 template:
-			expr_list
+			basic_expr_list
+				{}
+			| basic_expr_list extends expr_list
+				{}
+			| basic_expr_list tag_expr expr_list
+				{}
 
+basic_expr_list:
+			basic_expr_list basic_expr
 				{
-					
+					$$ = $2;
 				}
+			| /* EMPTY */
+				{
+					$$ = NULL;
+				}
+
+extends:	EXTENDS_P SCONST
+				{
+					$$ = (Node *) $1;
+				}
+
 
 expr_list:
 			expr_list expr
@@ -76,6 +97,34 @@ expr_list:
 				{
 					$$ = NULL;
 				}
+
+tag_expr:
+			include
+			| tag
+		;
+
+basic_expr:
+			SCONST
+				{
+					$$ = (Node *) $1;
+				}
+			| ICONST
+				{
+					$$ = NULL;
+				}
+			| IDENT
+				{
+					$$ = (Node *) $1;
+				}
+			| basic_list
+				{
+					$$ = (Node *) $1;
+				}
+			| '(' basic_expr ')'
+				{
+					$$ = $2;
+				}
+		;
 
 expr:
 			SCONST
@@ -102,6 +151,13 @@ expr:
 				}
 		;
 
+basic_list:
+			'['	basic_expr_list ']'
+				{
+					$$ = $2;
+				}
+		;
+
 list:
 			'[' expr_list ']'
 				{
@@ -110,9 +166,9 @@ list:
 		;
 
 include:
-			TSTART	expr_list	TEND
+			TSTART template TEND
 				{
-					$$ = (Node *) $2;
+					$$ = NULL;
 				}
 		;
 
@@ -122,6 +178,7 @@ tag:
 			| comment
 			| csrf_token
 			| cycle
+			| debug
 		;
 
 autoescape: AUTOESCAPE_P toggle expr_list END_AUTOESCAPE_P
@@ -155,6 +212,12 @@ cycle:	CYCLE_P list
 		| CYCLE_P list AS_P any_ident opt_silent
 				{
 					$$ = (Node *) $2;
+				}
+		;
+
+debug:	DEBUG_P
+				{
+					$$ = (Node *) $1;
 				}
 		;
 

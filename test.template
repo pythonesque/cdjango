@@ -1,3 +1,4 @@
+{% extends "woolsmoth" %}
 {{% "\"THE WILL SMITH STORY\"" '
 By \'DJ Jazzy Jeff\'' %}
 
