@@ -5,6 +5,7 @@ Just sit right there
 I'll tell you how I became the prince of a town called Bel Air
 
 In west Philadelphia born and raised {% csrf_token %}
+{% cycle [3%} 4 {%[5 (6) (7) '8 9 10']] as silent silent %}
 On the playground was where I spent most of my days
 Chillin' out maxin' relaxin' all cool
 And all shootin some b-ball outside of the school

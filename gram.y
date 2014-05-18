@@ -31,15 +31,18 @@
 
 
 %type <template>	template
-%type <list>		expr_list
+%type <list>		expr_list list
+
 
 %type <node>		expr tag
 					autoescape
+
 					block
 					comment
 					csrf_token
+					cycle
 
-%type <boolean>		toggle
+%type <boolean>		toggle opt_silent
 %type <str>			any_ident
 %type <keyword>		any_keyword
 
@@ -52,13 +55,14 @@
 		END_IFEQUAL_P END_IFNOTEQUAL_P END_SPACELESS_P END_VERBATIM_P
 		END_WITH_P EXTENDS_P FILTER_P FIRSTOF_P FOR_P FROM_P IN_P IF_P
 		IFCHANGED_P IFEQUAL_P IFNOTEQUAL_P INCLUDE_P LOAD_P NOT_P NOW_P OFF_P
-		ON_P ONLY_P OR_P PARSED_P REGROUP_P SPACELESS_P SSI_P TEMPLATETAG_P
-		URL_P VERBATIM_P WIDTHRATIO_P WITH_P
+		ON_P ONLY_P OR_P PARSED_P REGROUP_P SILENT_P SPACELESS_P SSI_P
+		TEMPLATETAG_P URL_P VERBATIM_P WIDTHRATIO_P WITH_P
 
 %%
 
 template:
 			expr_list
+
 				{
 					
 				}
@@ -82,10 +86,25 @@ expr:
 				{
 					$$ = NULL;
 				}
+			| list
+				{
+					$$ = (Node *) $1;
+				}
 			| tag
+			| '(' expr ')'
+				{
+					$$ = $2;
+				}
 			| IDENT
 				{
 					$$ = (Node *) $1;
+				}
+		;
+
+list:
+			'[' expr_list ']'
+				{
+					$$ = $2;
 				}
 		;
 
@@ -94,6 +113,7 @@ tag:
 			| block
 			| comment
 			| csrf_token
+			| cycle
 		;
 
 autoescape: AUTOESCAPE_P toggle expr_list END_AUTOESCAPE_P
@@ -116,7 +136,17 @@ comment:	COMMENT_P expr_list END_COMMENT_P
 
 csrf_token:	CSRF_TOKEN_P
 				{
-					$$ = NULL;
+					$$ = (Node *) $1;
+				}
+		;
+
+cycle:	CYCLE_P list
+				{
+					$$ = (Node *) $2;
+				}
+		| CYCLE_P list AS_P any_ident opt_silent
+				{
+					$$ = (Node *) $2;
 				}
 		;
 
@@ -139,6 +169,17 @@ any_ident:
 			| IDENT
 				{
 					$$ = $1;
+				}
+		;
+
+opt_silent:
+			SILENT_P
+				{
+					$$ = true;
+				}
+			| /* EMPTY */
+				{
+					$$ = false;
 				}
 		;
 
@@ -187,6 +228,7 @@ any_keyword:
 			| OR_P
 			| PARSED_P
 			| REGROUP_P
+			| SILENT_P
 			| SPACELESS_P
 			| SSI_P
 			| TEMPLATETAG_P
