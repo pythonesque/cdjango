@@ -20,7 +20,8 @@
 	/* YYSTYPE 	yystype; */
 	/* these fields must match YYSTYPE */
 	int			ival;
-	char const *str;
+	char	   *str;
+	char const *keyword;
 
 	char chr;
 	bool boolean;
@@ -32,10 +33,19 @@
 %type <template>	template
 %type <list>		stmt_list
 %type <node>		stmt
+%type <boolean>		toggle
 
-%token <str>	IDENT FCONST SCONST
+%token <str>	IDENT SCONST
 %token <ival>	ICONST
-%token			ERROR
+
+%token <keyword> AND_P AS_P AUTOESCAPE_P BLOCK_P BY_P COMMENT_P CSRF_P CYCLE_P
+		DEBUG_P ELIF_P ELSE_P EMPTY_P END_AUTOESCAPE_P END_BLOCK_P END_COMMENT_P
+		END_FILTER_P END_FOR_P END_IF_P END_IFCHANGED_P END_IFEQUAL_P
+		END_IFNOTEQUAL_P END_SPACELESS_P END_VERBATIM_P END_WITH_P EXTENDS_P
+		FILTER_P FIRSTOF_P FOR_P FROM_P IN_P IF_P IFCHANGED_P IFEQUAL_P
+		IFNOTEQUAL_P INCLUDE_P LOAD_P NOT_P NOW_P OFF_P ON_P ONLY_P OR_P
+		PARSED_P REGROUP_P SPACELESS_P SSI_P TEMPLATETAG_P URL_P VERBATIM_P
+		WIDTHRATIO_P WITH_P
 
 %%
 
@@ -69,7 +79,21 @@ stmt:
 				{
 					$$ = (Node *) $1;
 				}
+			| AUTOESCAPE_P toggle stmt_list END_AUTOESCAPE_P
+				{
+					$$ = (Node *) $3;
+				}
 		;
+
+toggle:
+			ON_P
+				{
+					$$ = true;
+				}
+			| OFF_P
+				{
+					$$ = false;
+				}
 
 %%
 

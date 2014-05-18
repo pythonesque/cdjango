@@ -182,7 +182,25 @@ other			.
 
 <xt>include		{	yyextra->include = 1; }
 
-<xt>{identifier}	{	yyextra->include = 0; printf("(IDENT: %s)", yytext); return IDENT; }
+<xt>{identifier}	{
+	yyextra->include = 0;
+	ScanKeyword const *keyword;
+
+	/* Is it a keyword? */
+	keyword = ScanKeywordLookup(yytext,
+								yyextra->keywords,
+								yyextra->num_keywords);
+
+	if (keyword != NULL)
+	{
+		yylval->keyword = keyword->name;
+		printf("(KEYWORD: %s)", keyword->name);
+		return keyword->value;
+	}
+
+	printf("(IDENT: %s)", yytext);
+	return IDENT;
+}
 
 <xt>{integer}	{	printf("(ICONS: %s)", yytext); return ICONST; }
 
@@ -268,7 +286,10 @@ include_file(yyscan_t *yyscanner)
  * Called before any actual parsing is done
  */
 yyscan_t
-scanner_init(FILE *file, yy_extra_type *yyext)
+scanner_init(FILE *file,
+			 yy_extra_type *yyext,
+			 ScanKeyword const *keywords,
+			 uint16_t num_keywords)
 {
 	yyscan_t	scanner;
 
@@ -277,6 +298,9 @@ scanner_init(FILE *file, yy_extra_type *yyext)
 	}
 
 	yyset_extra(yyext, scanner);
+
+	yyext->keywords = keywords;
+	yyext->num_keywords = num_keywords;
 
 	yyext->include = false;
 	yyext->include_stack_ptr = 0;

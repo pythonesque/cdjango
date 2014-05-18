@@ -50,7 +50,7 @@ compile_template(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-	scanner = scanner_init(file, &yyextra);
+	scanner = scanner_init(file, &yyextra, ScanKeywords, NumScanKeywords);
 	parser_init();
 	yyparse(scanner);
 	res = scanner_finish(scanner);

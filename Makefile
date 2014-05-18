@@ -2,9 +2,9 @@ SHELL = /bin/sh
 
 srcdir = .
 
-sources = template.c
+objects = gram.o keywords.o kwlookup.o
 
-testsources = test.c
+testobjects = test.c
 
 .SUFFIXES:
 .SUFFIXES: .c .o .l .y
@@ -22,10 +22,8 @@ LDLIBS =
 all: libtemplate.a test
 
 test: LDLIBS += -ltemplate
-test: $(testsources:.c=.o) libtemplate.a
-	$(CC) $(LDFLAGS) -L. -o $@ $(testsources:.c=.o) $(LDLIBS)
-
-objects = $(sources:.c=.o) gram.o
+test: $(testobjects) libtemplate.a
+	$(CC) $(LDFLAGS) -L. -o $@ $(testobjects) $(LDLIBS)
 
 gram.o: scan.c
 
@@ -33,9 +31,11 @@ gram.h: gram.c
 
 gram.c: YFLAGS += --defines=gram.h
 
-gram.o: gram.h
-
+scan.c: LFLAGS += -CF -p -p
 scan.c: scan.l
+
+# Force these dependencies to be known even without dependency info built:
+gram.o keywords.o: gram.h
 
 # template: $(objects)("test"
 # 	$(CC) $(LDFLAGS) -o $@ $(objects) $(LDLIBS)
@@ -50,7 +50,9 @@ libtemplate.a: $(objects)
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
--include $(sources:.c=.d)
+ifneq (,$(wildcard gram.h))
+-include $(objects:.o=.d)
+endif
 
 .PHONY: clean
 clean:
