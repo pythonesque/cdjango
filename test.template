@@ -1,10 +1,10 @@
-{% extends "woolsmoth" %}
+{#{% extends "woolsmoth" %}#}
 {{% "\"THE WILL SMITH STORY\"" '
 By \'DJ Jazzy Jeff\'' %}
 
 {% time
-%} this is {% 1 %} story {%
+%} this is {{ 1 }} story {%
 'all ' prep ' how' %}
 {% autoescape on %}My life got flip-turned upside down.{% endautoescape %}
-{% block and %}{% include "rest.template" %}{% endblock %}{%
+{% block and %}{% include 'rest.template' %}{% endblock %}{%
 %}To sit on my throne as the Prince of Bel Air.}

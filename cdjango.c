@@ -17,7 +17,7 @@ static struct PyModuleDef cdjangomodule = {
 	PyModuleDef_HEAD_INIT,
 	"cdjango",
 	NULL,
-	0,
+	-1,
 	CDjangoMethods
 };
 

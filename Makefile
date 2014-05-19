@@ -50,7 +50,11 @@ endif
 
 test: LDLIBS += -ltemplate
 test: $(testobjects) libtemplate.a
-	$(CC) $(LDFLAGS) -L. -o $@ $(testobjects) $(LDLIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -L. -o $@ $(testobjects) $(LDLIBS)
+
+bench:
+	$(PYTHON) pytest.py; \
+	perf stat -r 100 -- ./test < test.template > /dev/null
 
 .PHONY: cdjango
 cdjango: libtemplate.a

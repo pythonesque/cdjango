@@ -1,14 +1,14 @@
-{% extends "woolsmoth" %}
-{% block and block or block endblock %}And I'd like to take a minute{% endblock endblock
-endblock %}
+{# {% extends "woolsmoth" %} #}
+{% block and %}{% block or %}{% block endblock %}And I'd like to take a minute{%endblock %}
+{%endblock%}{% endblock %}
 {% comment %}Fourscore and seven years ago{% endcomment %}
 Just sit right there
 I'll tell you how I became the prince of a town called Bel Air
 
 In west Philadelphia born and raised {% csrf_token %}
-{% cycle [3%} 4 {%[5 (6) (7) '8 9 10']] as silent silent %}
+{#{% cycle [3%} 4 {%[5 (6) (7) '8 9 10']] as silent silent %}#}
 On the playground was where I spent most of my days
-{% debug %}
+{#{% debug %}#}
 Chillin' out maxin' relaxin' all cool
 And all shootin some b-ball outside of the school
 When a couple of guys who were up to no good
