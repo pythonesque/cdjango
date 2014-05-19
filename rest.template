@@ -9,7 +9,7 @@ In west Philadelphia born and raised {% csrf_token %}
 {#{% cycle [3%} 4 {%[5 (6) (7) '8 9 10']] as silent silent %}#}
 On the playground was where I spent most of my days
 {#{% debug %}#}
-Chillin' out maxin' relaxin' all cool
+{%filter force_escape|lower %}Chillin' out maxin' relaxin' all cool{% endfilter %}
 And all shootin some b-ball outside of the school
 When a couple of guys who were up to no good
 Started making trouble in my neighborhood

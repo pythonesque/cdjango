@@ -31,11 +31,13 @@
 
 
 %type <template>	template
-%type <list>		expr_list list
-					basic_expr_list basic_list
-
+%type <list>		expr_list basic_expr_list
+					list basic_list
+					filter_list basic_filter_list
 
 %type <node>		expr basic_expr
+					filter_expr basic_filter_expr
+					filter_clause basic_filter_clause
 					tag include
 					autoescape
 					block
@@ -44,6 +46,7 @@
 					cycle
 					debug
 					extends
+					filter
 
 %type <boolean>		toggle opt_silent
 %type <str>			any_ident
@@ -61,6 +64,9 @@
 		IFCHANGED_P IFEQUAL_P IFNOTEQUAL_P INCLUDE_P LOAD_P NOT_P NOW_P OFF_P
 		ON_P ONLY_P OR_P PARSED_P REGROUP_P SILENT_P SPACELESS_P SSI_P
 		TEMPLATETAG_P URL_P VERBATIM_P WIDTHRATIO_P WITH_P
+
+%nonassoc IDENT
+%right '|'
 
 %%
 
@@ -120,6 +126,7 @@ basic_expr:
 				{
 					$$ = (Node *) $1;
 				}
+			| basic_filter_expr
 			| '(' basic_expr ')'
 				{
 					$$ = $2;
@@ -143,6 +150,7 @@ expr:
 				{
 					$$ = (Node *) $1;
 				}
+			| filter_expr
 			| include
 			| tag
 			| '(' expr ')'
@@ -158,10 +166,24 @@ basic_list:
 				}
 		;
 
+basic_filter_expr:
+			basic_expr '|' basic_filter_list
+				{
+					$$ = $1;
+				}
+		;
+
 list:
 			'[' expr_list ']'
 				{
 					$$ = $2;
+				}
+		;
+
+filter_expr:
+			expr '|' basic_filter_list
+				{
+					$$ = $1;
 				}
 		;
 
@@ -179,43 +201,79 @@ tag:
 			| csrf_token
 			| cycle
 			| debug
+			| filter
 		;
 
-autoescape: AUTOESCAPE_P toggle expr_list END_AUTOESCAPE_P
+basic_filter_list:
+			basic_filter_list '|' basic_filter_clause
+				{
+					$$ = $3;
+				}
+			| basic_filter_clause
+				{
+					$$ = $1;
+				}
+		;
+
+autoescape:
+			AUTOESCAPE_P toggle expr_list END_AUTOESCAPE_P
 				{
 					$$ = (Node *) $3;
 				}
 		;
 
-block:		BLOCK_P any_ident expr_list END_BLOCK_P
+block:
+			BLOCK_P any_ident expr_list END_BLOCK_P
 				{
 					$$ = (Node *) $3;
 				}
 		;
 
-comment:	COMMENT_P expr_list END_COMMENT_P
+comment:
+			COMMENT_P expr_list END_COMMENT_P
 				{
 					$$ = NULL;
 				}
 		;
 
-csrf_token:	CSRF_TOKEN_P
+csrf_token:
+			CSRF_TOKEN_P
 				{
 					$$ = (Node *) $1;
 				}
 		;
 
-cycle:	CYCLE_P list
+cycle:
+			CYCLE_P list
 				{
 					$$ = (Node *) $2;
 				}
-		| CYCLE_P list AS_P any_ident opt_silent
+			| CYCLE_P list AS_P any_ident opt_silent
 				{
 					$$ = (Node *) $2;
 				}
 		;
 
-debug:	DEBUG_P
+debug:
+			DEBUG_P
+				{
+					$$ = (Node *) $1;
+				}
+		;
+
+filter:
+			FILTER_P	filter_list	expr_list	END_FILTER_P
+				{
+					$$ = (Node *) $3;
+				}
+		;
+
+basic_filter_clause:
+			IDENT
+				{
+					$$ = (Node *) $1;
+				}
+			| IDENT ':' basic_expr	%prec '|'
 				{
 					$$ = (Node *) $1;
 				}
@@ -251,6 +309,28 @@ opt_silent:
 			| /* EMPTY */
 				{
 					$$ = false;
+				}
+		;
+
+filter_list:
+			filter_list '|' filter_clause
+				{
+					$$ = $3;
+				}
+			| filter_clause
+				{
+					$$ = $1;
+				}
+		;
+
+filter_clause:
+			IDENT
+				{
+					$$ = (Node *) $1;
+				}
+			| IDENT ':' expr	%prec '|'
+				{
+					$$ = (Node *) $1;
 				}
 		;
 
